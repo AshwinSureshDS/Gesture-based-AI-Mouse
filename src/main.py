@@ -49,6 +49,9 @@ def main():
     # screenshot delay
     s_delay = 0
     
+    # Drag state
+    dragging = False
+    
     def s_clk_delay():
         nonlocal s_delay
         nonlocal s_clk_thread
@@ -62,6 +65,7 @@ def main():
     buttons = [
         TextButton("Mouse Moving", 10, 5),
         TextButton("Mouse Lock", 200, 5),
+        TextButton("Drag Mode", 390, 5),
         TextButton("Left Click", 10, 45),
         TextButton("Right Click", 200, 45),
         TextButton("Double Click", 390, 45),
@@ -102,10 +106,29 @@ def main():
                 # Reset moving and lock buttons
                 buttons[0].is_active = False
                 buttons[1].is_active = False
+                buttons[2].is_active = False # Drag Mode (Note: logic below uses index 2 which is WRONG based on insertion order)
+
                 
+                # Check for Drag (Pinch: Index + Thumb)
+                thumb_x, thumb_y = lmlist[4][0], lmlist[4][1]
+                drag_length, _, _ = detector.findDistance((thumb_x, thumb_y), (ind_x, ind_y), img)
+                
+                if drag_length < 40:
+                    if not dragging:
+                        # WARNING: If the mouse cursor is over the OpenCV window title bar or borders
+                        # when this press happens, Windows may pause the application loop!
+                        mouse.press(button='left')
+                        dragging = True
+                    buttons[2].is_active = True # Drag Mode
+                else:
+                    if dragging:
+                        mouse.release(button='left')
+                        dragging = False
+                    buttons[2].is_active = False
+
                 # Mouse Movement
-                if fingers[1] == 1 and fingers[2] == 0 and fingers[0] == 1:
-                    buttons[0].is_active = True  # Mouse Moving - instant state
+                if ((fingers[1] == 1 and fingers[2] == 0 and fingers[0] == 1) or dragging):
+                    buttons[0].is_active = True  # Mouse Moving
                     converted_x = np.interp(ind_x, [frameR, cam_width - frameR], [0, 1536])
                     converted_y = np.interp(ind_y, [frameR, cam_height - frameR], [0, 864])
                     
@@ -125,17 +148,17 @@ def main():
                     length, _, img = detector.findDistance((ind_x, ind_y), (mid_x, mid_y), img)
                     if length < 40:
                         if fingers[3] == 0 and fingers[4] == 0 and l_delay == 0:
-                            buttons[2].set_active()  # Left Click
+                            buttons[3].set_active()  # Left Click
                             mouse.click(button='left')
                             l_delay = 1
                             l_clk_thread.start()
                         elif fingers[3] == 1 and fingers[4] == 0 and r_delay == 0:
-                            buttons[3].set_active()  # Right Click
+                            buttons[4].set_active()  # Right Click
                             mouse.click(button='right')
                             r_delay = 1
                             r_clk_thread.start()
                         elif fingers[3] == 0 and fingers[4] == 1:
-                            buttons[4].set_active()  # Double Click
+                            buttons[5].set_active()  # Double Click
                             mouse.double_click(button='left')
                             
                 # Scroll actions
@@ -143,17 +166,17 @@ def main():
                     length, _, img = detector.findDistance((ind_x, ind_y), (mid_x, mid_y), img)
                     if length < 30:
                         if fingers[4] == 1:
-                            buttons[5].set_active()  # Scroll Up
+                            buttons[6].set_active()  # Scroll Up
                             mouse.wheel(delta=1)
                         else:
-                            buttons[6].set_active()  # Scroll Down
+                            buttons[7].set_active()  # Scroll Down
 
                             mouse.wheel(delta=-1)
 
                 # Screenshot Action (Shaka Gesture: Thumb + Pinky)
                 if fingers[0] == 1 and fingers[1] == 0 and fingers[2] == 0 and fingers[3] == 0 and fingers[4] == 1:
                     if s_delay == 0:
-                        buttons[7].set_active()
+                        buttons[8].set_active()
                         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                         filename = f"screenshot_{timestamp}.png"
                         pyautogui.screenshot(filename)
