@@ -3,6 +3,8 @@ import numpy as np
 import threading
 import time
 import mouse
+import pyautogui
+import datetime
 
 from utils.hand_detector import HandDetector
 from utils.button import TextButton
@@ -41,7 +43,20 @@ def main():
         r_clk_thread = threading.Thread(target=r_clk_delay)
 
     l_clk_thread = threading.Thread(target=l_clk_delay)
+
     r_clk_thread = threading.Thread(target=r_clk_delay)
+
+    # screenshot delay
+    s_delay = 0
+    
+    def s_clk_delay():
+        nonlocal s_delay
+        nonlocal s_clk_thread
+        time.sleep(2) # 2 second delay for screenshots
+        s_delay = 0
+        s_clk_thread = threading.Thread(target=s_clk_delay)
+        
+    s_clk_thread = threading.Thread(target=s_clk_delay)
 
     # Create buttons
     buttons = [
@@ -51,7 +66,9 @@ def main():
         TextButton("Right Click", 200, 45),
         TextButton("Double Click", 390, 45),
         TextButton("Scroll Up", 10, 85),
-        TextButton("Scroll Down", 200, 85)
+
+        TextButton("Scroll Down", 200, 85),
+        TextButton("Screenshot", 390, 85)
     ]
 
     def reset_buttons():
@@ -130,7 +147,19 @@ def main():
                             mouse.wheel(delta=1)
                         else:
                             buttons[6].set_active()  # Scroll Down
+
                             mouse.wheel(delta=-1)
+
+                # Screenshot Action (Shaka Gesture: Thumb + Pinky)
+                if fingers[0] == 1 and fingers[1] == 0 and fingers[2] == 0 and fingers[3] == 0 and fingers[4] == 1:
+                    if s_delay == 0:
+                        buttons[7].set_active()
+                        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                        filename = f"screenshot_{timestamp}.png"
+                        pyautogui.screenshot(filename)
+                        print(f"Screenshot saved: {filename}")
+                        s_delay = 1
+                        s_clk_thread.start()
             
             # Draw all buttons
             for button in buttons:
